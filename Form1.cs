@@ -68,11 +68,6 @@ namespace FileCompareTool
                             rightColor = Color.Red;
                         }
                     }
-                    else
-                    {
-                        leftColor = Color.Black;
-                        rightColor = Color.Black;
-                    }
                 }
                 else if (leftFile != null && rightFile == null)
                 {
@@ -108,10 +103,45 @@ namespace FileCompareTool
             ListViewItem item = new ListViewItem(file.Name);
             item.SubItems.Add($"{(file.Length / 1024.0):N0} KB");
             item.SubItems.Add(file.LastWriteTime.ToString("yyyy-MM-dd tt h:mm"));
-
             item.ForeColor = itemColor;
             item.UseItemStyleForSubItems = true;
             lv.Items.Add(item);
+        }
+
+        // 파일 복사 핵심 로직
+        private void CopyFile(string sourceDir, string targetDir, ListView sourceLv)
+        {
+            if (sourceLv.SelectedItems.Count == 0) return;
+
+            string fileName = sourceLv.SelectedItems[0].Text;
+            if (string.IsNullOrEmpty(fileName)) return;
+
+            string sourcePath = Path.Combine(sourceDir, fileName);
+            string targetPath = Path.Combine(targetDir, fileName);
+
+            if (File.Exists(targetPath))
+            {
+                DateTime srcTime = File.GetLastWriteTime(sourcePath);
+                DateTime destTime = File.GetLastWriteTime(targetPath);
+
+                string msg = $"대상에 동일한 이름의 파일이 이미 있습니다.\n" +
+                             $"대상 파일이 더 {(srcTime > destTime ? "오래된" : "신규")} 파일입니다. 덮어쓰시겠습니까?\n\n" +
+                             $"원본: {srcTime:yyyy-MM-dd tt h:mm}\n" +
+                             $"대상: {destTime:yyyy-MM-dd tt h:mm}";
+
+                if (MessageBox.Show(msg, "덮어쓰기 확인", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                    return;
+            }
+
+            try
+            {
+                File.Copy(sourcePath, targetPath, true);
+                CompareAndDisplay();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("복사 중 오류 발생: " + ex.Message);
+            }
         }
 
         private void btnLeftDir_Click_1(object sender, EventArgs e)
@@ -136,6 +166,15 @@ namespace FileCompareTool
                     CompareAndDisplay();
                 }
             }
+        }
+        private void btnCopyFromLeft_Click_1(object sender, EventArgs e)
+        {
+            CopyFile(txtLeftDir.Text, txtRightDir.Text, lvwLeftDir);
+        }
+
+        private void btnCopyFromRight_Click_1(object sender, EventArgs e)
+        {
+            CopyFile(txtRightDir.Text, txtLeftDir.Text, lvwrightDir);
         }
     }
 }
